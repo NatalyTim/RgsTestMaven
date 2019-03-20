@@ -25,12 +25,11 @@
                 <version>3.0.0-M3</version>
                 <configuration>
                     <systemPropertyVariables>
-                        <driverType>${driverType}</driverType>>
+                        <driverType>${driverType}</driverType>
                     </systemPropertyVariables>
                 </configuration>
            </plugin>
         </plugins>
-
     </build>
 
     <dependencies>

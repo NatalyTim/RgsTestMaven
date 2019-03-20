@@ -7,6 +7,8 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.ie.InternetExplorerDriver;
+import org.openqa.selenium.ie.InternetExplorerOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -14,25 +16,39 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.assertTrue;
 
 public class BaseTest {
     public static WebDriver driver;
-    public static String browser = "chrome";
-     @BeforeClass
+    public static final String IE = "ie";
+    public static final String FIREFOX = "firefox";
+    public static String browser = "";
+
+    @BeforeClass
     public static void setUp() {
-         browser = System.getProperty("driverType");
-         System.out.println("browser = " + browser);
+        browser = System.getProperty("driverType");
+        System.out.println("browser = " + browser);
         String url = "https://www.rgs.ru/";
-        if ("firefox".equals(browser)) {
+        if (FIREFOX.equalsIgnoreCase(browser)) {
             System.out.println(" FireFox");
             System.setProperty("webdriver.gecko.driver", "drv/geckodriver.exe");
             driver = new FirefoxDriver();
             driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
             driver.manage().window().maximize();
-            browser = "firefox";
+            browser = FIREFOX;
             driver.get(url);
-        }else {
+        } else if (IE.equalsIgnoreCase(browser)) {
+            System.out.println(" Internete Explorer");
+            System.setProperty("webdriver.ie.driver", "drv1/IEDriverServer.exe");
+            InternetExplorerOptions options = new InternetExplorerOptions();
+            options.requireWindowFocus();
+            driver = new InternetExplorerDriver();
+            driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+            driver.manage().window().maximize();
+            browser = IE;
+            driver.get(url);
+        } else {
             System.out.println(" Chrome");
             System.setProperty("webdriver.chrome.driver", "drv/chromedriver.exe");
             driver = new ChromeDriver();
@@ -50,14 +66,22 @@ public class BaseTest {
     }
 
     public static void compareText(String xpath, String expect) throws Exception {
-
-        WebElement s1 = (new WebDriverWait(driver, 10))
-                .until(ExpectedConditions.elementToBeClickable(By.xpath(xpath)));
-        scrollToElement(s1);
-        scrollToElement(s1);
-       assertTrue("Исходного текста нет: ",
-                expect.contains(driver.findElement(By.xpath(xpath)).getText()));
-        System.out.println("Исходный текст есть:" + expect);
+        for (int i = 0; i < 10; i++) {
+            System.out.println("Attempt #" + i);
+            try {
+                WebElement s1 = (new WebDriverWait(driver, 10))
+                        .until(ExpectedConditions.elementToBeClickable(By.xpath(xpath)));
+                scrollToElement(s1);
+                assertTrue("Исходного текста нет: ",
+                        expect.contains(driver.findElement(By.xpath(xpath)).getText()));
+                System.out.println("Исходный текст есть:" + expect);
+                return;
+            } catch (Exception e) {
+                if (i >= 9)
+                    throw new Exception("Невозможно найти элемент!");
+                continue;
+            }
+        }
 
     }
 
@@ -70,10 +94,17 @@ public class BaseTest {
 
     }
 
-    public static void clickElement(By locator) {
+    public static void clickElement(WebElement element) {
+        if (IE.equalsIgnoreCase(browser)) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+        } else
+            element.click();
+    }
 
-        (new WebDriverWait(driver, 10))
-                .until(ExpectedConditions.elementToBeClickable(locator)).click();
+    public static void clickElement(By locator) {
+        WebElement element = (new WebDriverWait(driver, 10))
+                .until(ExpectedConditions.elementToBeClickable(locator));
+        clickElement(element);
     }
 
     public static void setFirstDateOfTrip(WebElement nextMonth) {
@@ -82,24 +113,37 @@ public class BaseTest {
         DateFormat df = new SimpleDateFormat();
         int reportDay = dateInTwoWeeks.getDayOfMonth();
         if (dateNow.getMonth() != dateInTwoWeeks.getMonth()) {
-            nextMonth.click();
-            driver.findElement(By.xpath("//div[contains(@class,'datepicker-days')]" +
-                    "/table/tbody/tr/td[@class='day'][contains(text(), " + reportDay + ")]")).click();
+            clickElement(nextMonth);
+            clickElement(
+                    driver.findElement(By.xpath("//div[contains(@class,'datepicker-days')]" +
+                            "/table/tbody/tr/td[@class='day'][contains(text(), " + reportDay + ")]"))
+            );
 
         } else {
-            driver.findElement(By.xpath("//div[contains(@class,'datepicker-days')]" +
-                    "/table/tbody/tr/td[@class='day'][contains(text(), " + reportDay + ")]")).click();
+            clickElement(
+                    driver.findElement(By.xpath("//div[contains(@class,'datepicker-days')]" +
+                            "/table/tbody/tr/td[@class='day'][contains(text(), " + reportDay + ")]"))
+            );
         }
     }
 
-    public static void scrollToAndClickElement(By locator) {
+    public static void scrollToAndClickElement(By locator) throws Exception {
+        for (int i = 0; i < 10; i++) {
+            try {
+                WebElement element = (new WebDriverWait(driver, 10)
+                        .until(ExpectedConditions.elementToBeClickable(locator)));
+                scrollToElement(element);
+                printElement(element);
+                clickElement(element);
+                return;
+            } catch (Exception e) {
+                if (i >= 9)
+                    throw new Exception("Невозможно найти элемент!");
+                continue;
+            }
 
-        WebElement element = (new WebDriverWait(driver, 10)
-                .until(ExpectedConditions.elementToBeClickable(locator)));
-        scrollToElement(element);
-        scrollToElement(element);
-        printElement(element);
-        element.click();
+        }
+
     }
 
     public static void scrollToAndClickActiveSport(By locator, boolean bol) {
@@ -113,17 +157,18 @@ public class BaseTest {
         System.out.println("bol = " + bol);
         if (classes.contains("off")) {
             if (bol) {
-                element.click();
+                clickElement(element);
             }
         } else if (!classes.contains("off")) {
             if (!bol) {
-                element.click();
+                clickElement(element);
             }
         }
 
     }
 
     public static void scrollToElement(WebElement element) {
+
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", element);
     }
 

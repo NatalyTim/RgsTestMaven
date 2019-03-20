@@ -5,7 +5,9 @@ import org.junit.runners.Parameterized;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -17,10 +19,11 @@ public class RgsTest extends BaseTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
-                {"IVAN NIKOLAEV", "15.02.1966",true,false},
-                {"SVETA LI", "11.12.1991", false,false},
-                {"PETR PETROV", "01.01.1983",true,true}});
+                {"IVAN NIKOLAEV", "15.02.1966", true, false},
+                {"SVETA LI", "11.12.1991", false, false},
+                {"PETR PETROV", "15.02.1966", true, true}});
     }
+
     @Parameterized.Parameter
     public String fullName;
 
@@ -33,8 +36,9 @@ public class RgsTest extends BaseTest {
     @Parameterized.Parameter(3)
     public boolean lastParameter;
 
+
     @BeforeClass
-    public static void openForm() throws Exception{
+    public static void openForm() throws Exception {
         //2. Выбрать пункт меню - Страховани
         System.out.println("2. Выбрать пункт меню - Страховани");
         clickElement(By.xpath("//ol/li/a[contains(text(),'Страхование')]"));
@@ -56,7 +60,7 @@ public class RgsTest extends BaseTest {
 
     @Test
     public void rgs() throws Exception {
-        if(lastParameter) {
+        if (lastParameter) {
             //5.5. Я согласен на обработку данных  - выбрать чекбокс
             System.out.println("5.5 Я согласен на обработку данных  - выбрать чекбокс");
             scrollToAndClickElement(By.xpath("//form[contains(@data-bind,'calculation')]" +
@@ -76,12 +80,18 @@ public class RgsTest extends BaseTest {
 
         // 8.Страна въезда – Испания
         System.out.println("8.Страна въезда – Испания");
-        element = driver.findElement(By.name("ArrivalCountryList"));
-        scrollToElement(element);
-        scrollToElement(element);
-        scrollToElement(element);
-       new Select(element).selectByVisibleText("Испания");
-
+        for(int i = 0 ; i < 10; i++) {
+            try {
+                element = driver.findElement(By.name("ArrivalCountryList"));
+                scrollToElement(element);
+                new Select(element).selectByVisibleText("Испания");
+                break;
+            }catch(Exception ex){
+                if(i>= 9)
+                    throw new Exception("Невозможно найти элемент!");
+                continue;
+            }
+        }
         // 9.Дата первой поездки – 1 ноября
         System.out.println("9.Дата первой поездки");
         scrollToAndClickElement(By.xpath("//input[contains(@data-bind, 'FirstDepartureDate')]"));
@@ -103,47 +113,58 @@ public class RgsTest extends BaseTest {
 
         //12.Дата рождения
         System.out.println("12.Дата рождения");
-        element = driver.findElement(By.xpath("//*[@data-test-name='BirthDate']"));
-        scrollToElement(element);
-        element.click();
-        element.clear();
-        element.sendKeys(birthDay);
-
+        for (int i = 0; i < 10; i++) {
+            try {
+                element = (new WebDriverWait(driver, 10)
+                        .until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@data-test-name='BirthDate']"))));
+                scrollToElement(element);
+                printElement(element);
+                element.click();
+                element.clear();
+                element.sendKeys(birthDay);
+                element.sendKeys(Keys.TAB);
+                break;
+            }catch (Exception e){
+                if(i>= 9)
+                    throw new Exception("Невозможно найти элемент!");
+                continue;
+            }
+        }
 
         //13.Планируется активный отдых
         System.out.println("13.Планируется активный отдых");
-        scrollToAndClickActiveSport(By.xpath("//div[contains(@data-bind,'activeRestOrSportsToggle')]/div[contains(@class,  'toggle-rgs')]"),needActiveSport);
+        scrollToAndClickActiveSport(By.xpath("//div[contains(@data-bind,'activeRestOrSportsToggle')]/div[contains(@class,  'toggle-rgs')]"), needActiveSport);
 
-        if(lastParameter) {
+        if (lastParameter) {
             //15. Нажать рассчитать
-        System.out.println("15. Нажать рассчитать");
-          scrollToAndClickElement(By.xpath("//*[@data-test-name='NextButton'][contains(@data-bind,'Misc.NextButton')]"));
+            System.out.println("15. Нажать рассчитать");
+            scrollToAndClickElement(By.xpath("//*[@data-test-name='NextButton'][contains(@data-bind,'Misc.NextButton')]"));
 
-        //16. Проверить значения:
-        System.out.println("16.Проверить значения");
+            //16. Проверить значения:
+            System.out.println("16.Проверить значения");
 
-        //16.0 Условия страхования – Многократные поездки в течении года
-        System.out.println("16.0 Условия страхования – Многократные поездки в течении года");
-        String trips = "Многократные поездки в течение года";
-        compareText("//span[contains(@class,'summary-value')][@data-bind='with: Trips']/span[@class='text-bold']", trips);
+            //16.0 Условия страхования – Многократные поездки в течении года
+            System.out.println("16.0 Условия страхования – Многократные поездки в течении года");
+            String trips = "Многократные поездки в течение года";
+            compareText("//span[contains(@class,'summary-value')][@data-bind='with: Trips']/span[@class='text-bold']", trips);
 
-        //16.1 Территория – Шенген
-        System.out.println("16.1 Территория – Шенген");
-        compareText("//span/span[contains(@data-bind,'foreach: countries')]/strong", "Шенген");
+            //16.1 Территория – Шенген
+            System.out.println("16.1 Территория – Шенген");
+            compareText("//span/span[contains(@data-bind,'foreach: countries')]/strong", "Шенген");
 
-        //16.2 Застрахованный
-        System.out.println("16.2 Застрахованный");
-        compareText("//strong[contains(@data-bind,'LastName')]", fullName);
+            //16.2 Застрахованный
+            System.out.println("16.2 Застрахованный");
+            compareText("//strong[contains(@data-bind,'LastName')]", fullName);
 
-        //16.3 Дата рождения
-        System.out.println("16.3 Дата рождения");
-        compareText("//strong[contains(@data-bind,' text: BirthDay.')]", birthDay);
+            //16.3 Дата рождения
+            System.out.println("16.3 Дата рождения");
+            compareText("//strong[contains(@data-bind,' text: BirthDay.')]", birthDay);
 
-        //16.4 Активный отдых - включен
-        System.out.println("16.4 Активный отдых - включен");
-        compareText("//div[contains(@data-bind, 'SelectedProgram.Options')]" +
-                "/div[contains(@data-bind, 'Активный')]/div[@class='summary-row']" +
-                "/span[@class='summary-value']/span", "Включен");
+            //16.4 Активный отдых - включен
+            System.out.println("16.4 Активный отдых - включен");
+            compareText("//div[contains(@data-bind, 'SelectedProgram.Options')]" +
+                    "/div[contains(@data-bind, 'Активный')]/div[@class='summary-row']" +
+                    "/span[@class='summary-value']/span", "Включен");
         }
     }
 }
